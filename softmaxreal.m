@@ -1,0 +1,60 @@
+%softmax regression dealing with multiple classification
+data=xlsread('wine1.xlsx','B2:R179');
+data1=data(:,1:13);
+data1=(data1-min(data1))./(max(data1)-min(data1));
+data=[data1,data(:,14:end)];
+ratio=0.3;%train set ratio
+trainset_num=round(ratio*size(data,1));
+no=randperm(size(data,1));
+test=data(no(1:trainset_num),:);
+train=data(no((trainset_num+1):end),:);
+xtrain=train(:,1:13);
+xtest=test(:,1:13);
+ytrain=train(:,end);
+ytest=test(:,end);
+t1=train(:,14:16);
+t2=test(:,14:16);
+w=ones(3,size(xtrain,2));%initialisation,weight
+w0=ones(3,1);%bias
+epochs=8000;%iteration number
+lr=0.05;%learning rate
+sigma1=w;
+sigma2=w0;
+alpha=0.1;%weight of old gradient 
+%RMS Prop
+for i=1:epochs
+    w1=w(1,:);
+    w2=w(2,:);
+    w3=w(3,:);
+    w01=w0(1,:);
+    w02=w0(2,:);
+    w03=w0(3,:);
+    total=exp(xtrain*w1'+w01)+exp(xtrain*w2'+w02)+exp(xtrain*w3'+w03);
+    z1=exp(xtrain*w1'+w01)./total;%class1
+    z2=exp(xtrain*w2'+w02)./total;%class2
+    z3=exp(xtrain*w3'+w03)./total;%class3
+    deltaw1=sum((z1-t1(:,1)).*xtrain);
+    deltaw2=sum((z2-t1(:,2)).*xtrain);
+    deltaw3=sum((z3-t1(:,3)).*xtrain);
+    deltaw=[deltaw1;deltaw2;deltaw3];
+    deltaw01=sum(z1-t1(:,1));
+    deltaw02=sum(z2-t1(:,2));
+    deltaw03=sum(z3-t1(:,3));
+    deltaw0=[deltaw01;deltaw02;deltaw03];
+    sigma1=(alpha*sigma1.^2+(1-alpha)*deltaw.^2).^0.5;
+    sigma2=(alpha*sigma2.^2+(1-alpha)*deltaw0.^2).^0.5;
+    w=w-(lr./sigma1).*deltaw;
+    w0=w0-(lr./sigma2).*deltaw0;
+end
+ztrain=[z1,z2,z3];
+[~,trainpred]=max(ztrain');
+ytrainpredict=trainpred'-1;
+trainscore=sum((ytrainpredict==ytrain))./size(train,1)
+total=exp(xtest*w1'+w01)+exp(xtest*w2'+w02)+exp(xtest*w3'+w03);
+zz1=exp(xtest*w1'+w01)./total;%class1
+zz2=exp(xtest*w2'+w02)./total;%class2
+zz3=exp(xtest*w3'+w03)./total;%class3
+ztest=[zz1,zz2,zz3];
+[~,testpred]=max(ztest');
+ytestpredict=testpred'-1;
+testscore=sum((ytestpredict==ytest))./size(test,1)
